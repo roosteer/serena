@@ -718,6 +718,7 @@ class SerenaConfig(SharedConfig):
 
     _loaded_commented_yaml: CommentedMap | None = None
     _config_file_path: str | None = None
+    _unloaded_project_paths: set[str] = field(default_factory=set)
     """
     the path to the configuration file to which updates of the configuration shall be saved;
     if None, the configuration is not saved to disk
@@ -827,19 +828,24 @@ class SerenaConfig(SharedConfig):
         if "projects" not in loaded_commented_yaml:
             raise SerenaConfigError("`projects` key not found in Serena configuration. Please update your `serena_config.yml` file.")
         instance.projects = []
-        for path in loaded_commented_yaml["projects"]:
-            path = Path(path).resolve()
+        instance._unloaded_project_paths = set()
+        for configured_path in loaded_commented_yaml["projects"]:
+            path = Path(str(configured_path)).resolve()
+            path_str = str(path)
             try:
                 path_exists = path.exists()
             except OSError as e:
                 log.warning(f"Project path {path} is not accessible ({e}), skipping.")
+                instance._unloaded_project_paths.add(path_str)
                 continue
             if not path_exists or (path.is_dir() and not os.path.isfile(instance.get_project_yml_location(str(path)))):
                 log.warning(f"Project path {path} does not exist or no associated project configuration file found, skipping.")
+                instance._unloaded_project_paths.add(path_str)
                 continue
             if path.is_file():
                 path = cls._migrate_out_of_project_config_file(path)
                 if path is None:
+                    instance._unloaded_project_paths.add(path_str)
                     continue
                 num_migrations += 1
             project_config = ProjectConfig.load(path, serena_config=instance)  # instance is sufficiently populated
@@ -848,6 +854,7 @@ class SerenaConfig(SharedConfig):
                 project_config=project_config,
             )
             instance.projects.append(project)
+            instance._unloaded_project_paths.discard(str(path))
 
         # determine language backend
         language_backend = get_dataclass_default(SerenaConfig, "language_backend")
@@ -889,7 +896,7 @@ class SerenaConfig(SharedConfig):
         # re-save the configuration file if any migrations were performed
         if num_migrations > 0:
             log.info("Legacy configuration was migrated; re-saving configuration file")
-            instance.save()
+            instance.save(sync_template_comments=True)
 
         return instance
 
@@ -1017,9 +1024,11 @@ class SerenaConfig(SharedConfig):
             raise ValueError(f"Project '{project_name}' not found in Serena configuration; valid project names: {self.project_names}")
         self.save()
 
-    def save(self) -> None:
+    def save(self, sync_template_comments: bool = False) -> None:
         """
-        Saves the configuration to the file from which it was loaded (if any)
+        Saves the configuration to the file from which it was loaded (if any).
+
+        :param sync_template_comments: whether comments from the template should be transferred to the saved YAML
         """
         if self.config_file_path is None:
             return
@@ -1033,7 +1042,7 @@ class SerenaConfig(SharedConfig):
             commented_yaml[field_name] = getattr(self, field_name)
 
         # convert project objects into list of paths
-        commented_yaml["projects"] = sorted({str(project.project_root) for project in self.projects})
+        commented_yaml["projects"] = sorted({str(project.project_root) for project in self.projects} | self._unloaded_project_paths)
 
         # convert language backend to string
         commented_yaml["language_backend"] = self.language_backend.value
@@ -1041,13 +1050,14 @@ class SerenaConfig(SharedConfig):
         # convert line ending to string
         commented_yaml["line_ending"] = self.line_ending.value
 
-        # transfer comments from the template file
-        # NOTE: The template file now uses leading comments, but we previously used trailing comments,
-        #       so we apply a conversion, which detects the old style and transforms it.
-        # For some keys, we force updates, because old comments are problematic/misleading.
-        normalise_yaml_comments(commented_yaml, YamlCommentNormalisation.LEADING_WITH_CONVERSION_FROM_TRAILING)
-        template_yaml = load_yaml(SERENA_CONFIG_TEMPLATE_FILE, comment_normalisation=YamlCommentNormalisation.LEADING)
-        transfer_missing_yaml_comments(template_yaml, commented_yaml, YamlCommentNormalisation.LEADING, forced_update_keys=["projects"])
+        # optionally transfer comments from the template file
+        if sync_template_comments:
+            # NOTE: The template file now uses leading comments, but we previously used trailing comments,
+            #       so we apply a conversion, which detects the old style and transforms it.
+            # For some keys, we force updates, because old comments are problematic/misleading.
+            normalise_yaml_comments(commented_yaml, YamlCommentNormalisation.LEADING_WITH_CONVERSION_FROM_TRAILING)
+            template_yaml = load_yaml(SERENA_CONFIG_TEMPLATE_FILE, comment_normalisation=YamlCommentNormalisation.LEADING)
+            transfer_missing_yaml_comments(template_yaml, commented_yaml, YamlCommentNormalisation.LEADING, forced_update_keys=["projects"])
 
         save_yaml(self.config_file_path, commented_yaml)
 

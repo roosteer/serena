@@ -17,6 +17,7 @@ from serena.config.serena_config import (
 )
 from serena.constants import PROJECT_TEMPLATE_FILE, SERENA_MANAGED_DIR_NAME
 from serena.project import MemoriesManager, Project
+from serena.util.yaml import load_yaml
 from solidlsp.ls_config import Language
 from test.conftest import create_default_serena_config
 
@@ -143,6 +144,44 @@ class TestProjectConfig:
     def test_template_is_complete(self):
         _, is_complete = ProjectConfig._load_yaml_dict(PROJECT_TEMPLATE_FILE)
         assert is_complete, "Project template YAML is incomplete; all fields must be present (with descriptions)."
+
+
+class TestSerenaConfigPersistence:
+    def test_save_preserves_unloaded_project_paths(self, monkeypatch):
+        temp_dir = Path(tempfile.mkdtemp())
+        try:
+            valid_project_root = temp_dir / "valid-project"
+            valid_project_root.mkdir(parents=True)
+            config_for_project = create_default_serena_config()
+            ProjectConfig.autogenerate(valid_project_root, config_for_project, save_to_disk=True)
+
+            invalid_project_root = temp_dir / "missing-project"
+            config_path = temp_dir / "serena_config.yml"
+            config_path.write_text(
+                "\n".join(
+                    [
+                        "projects:",
+                        f"  - {valid_project_root}",
+                        f"  - {invalid_project_root}",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            monkeypatch.setattr(
+                SerenaConfig,
+                "_determine_config_file_path",
+                classmethod(lambda cls: str(config_path)),
+            )
+
+            config = SerenaConfig.from_config_file()
+            config.save()
+
+            saved_yaml = load_yaml(str(config_path))
+            assert str(invalid_project_root.resolve()) in saved_yaml["projects"]
+            assert str(valid_project_root.resolve()) in saved_yaml["projects"]
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 class TestProjectConfigLanguageBackend:
