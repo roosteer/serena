@@ -29,6 +29,7 @@ from serena.config.serena_config import (
     SerenaConfig,
     SerenaPaths,
 )
+from serena.config.serena_config_adapter import SerenaConfigAdapter as SerenaConfig  # local override: env var expansion in project paths
 from serena.constants import (
     DEFAULT_CONTEXT,
     PROMPT_TEMPLATES_DIR_INTERNAL,

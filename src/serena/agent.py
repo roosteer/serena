@@ -33,6 +33,7 @@ from serena.config.serena_config import (
     SerenaPaths,
     ToolInclusionDefinition,
 )
+from serena.config.serena_config_adapter import SerenaConfigAdapter as SerenaConfig  # local override: env var expansion in project paths
 from serena.dashboard import SerenaDashboardAPI, SerenaDashboardViewer
 from serena.ls_manager import LanguageServerManager
 from serena.project import MemoriesManager, Project
