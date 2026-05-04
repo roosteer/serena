@@ -8,12 +8,9 @@ from pydantic import BaseModel
 from sensai.util.logging import LogTime
 
 from serena.config.serena_config import LanguageBackend, SerenaConfig
-<<<<<<< HEAD
 from serena.config.serena_config_adapter import SerenaConfigAdapter as SerenaConfig  # local override: env var expansion in project paths
 from serena.jetbrains.jetbrains_plugin_client import JetBrainsPluginClient
-=======
 from serena.constants import SerenaPorts
->>>>>>> main
 
 if TYPE_CHECKING:
     from serena.project import Project
