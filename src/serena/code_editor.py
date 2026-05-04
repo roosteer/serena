@@ -57,15 +57,21 @@ class CodeEditor(Generic[TSymbol], ABC):
         """
         raise NotImplementedError("This method must be overridden for each subclass")
 
-    def read_file(self, relative_path: str) -> str:
+    def read_file(self, relative_path: str, lines: tuple[int, int] | None = None) -> str:
         """
         Reads the content of a file.
 
         :param relative_path: the relative path of the file to read
+        :param lines: tuple of (first_line, last_line) to read only a specific line range (0-based, inclusive)
         :return: the content of the file
         """
         with self._open_file_context(relative_path) as file:
-            return file.get_contents()
+            contents = file.get_contents()
+            if lines is None:
+                return contents
+            else:
+                first_line, last_line = lines
+                return TextUtils.get_text_in_lines_range(contents, first_line, last_line)
 
     @contextmanager
     def edited_file_context(self, relative_path: str) -> Iterator["CodeEditor.EditedFile"]:
@@ -135,6 +141,13 @@ class CodeEditor(Generic[TSymbol], ABC):
         Inserts content after the symbol with the given name in the given file.
         """
         symbol = self._find_unique_symbol(name_path, relative_file_path)
+        # Note: for body to be available, the symbol dto that the symbol instance is built from
+        # must have been retrieved either with body or at least with location.
+        # since _find_unique_symbol passes include_location=True, it works here
+        if symbol.body == symbol.name:
+            raise ValueError(
+                f"Cannot insert after this symbol (not a function, class or method): {symbol}. Consider using insert_before_symbol instead."
+            )
 
         # make sure body always ends with at least one newline
         if not body.endswith("\n"):

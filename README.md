@@ -4,7 +4,7 @@
 </p>
 
 <h3 align="center">
-    Serena is the IDE for your coding agent.
+    The IDE for Your Coding Agent
 </h3>
 
 <div align="center">
@@ -14,7 +14,7 @@
 <br>
 
 
-* Serena provides essential **semantic code retrieval, editing and refactoring tools** that are akin to an IDE's capabilities,
+* Serena provides essential **semantic code retrieval, editing, refactoring and debugging tools** that are akin to an IDE's capabilities,
   operating at the symbol level and exploiting relational structure.
 * It integrates with any client/LLM via the model context protocol (**MCP**).
   
@@ -27,6 +27,12 @@ more complex codebases.
 > [!IMPORTANT]
 > Do not install Serena via an MCP or plugin marketplace! They contain outdated and suboptimal installation commands. 
 > Instead, follow our [Quick Start](#quick-start) instructions.
+
+## Quick Demo
+
+https://github.com/user-attachments/assets/8d11646e-b80e-4723-b9d7-32d6101b5f58
+
+:tv: Longer video: [Introduction to Serena in 5 Minutes (YouTube)](https://www.youtube.com/watch?v=5QN7gN1KYLA)
 
 ## What Our "End Users" Say
 
@@ -67,10 +73,12 @@ but an LLM is required to do the actual work, orchestrating tool use.
 Serena can extend the functionality of your existing AI client via the **model context protocol (MCP)**.
 Most modern AI chat clients directly support MCP, including
 * terminal-based clients like Claude Code, Codex, OpenCode, or Gemini-CLI,
-* IDEs and IDE assistant plugins for VSCode, Cursor and JetBrains IDEs,
-* desktop and web clients like Claude Desktop or OpenWebUI.
+* IDEs and IDE assistant plugins for VSCode, Cursor and JetBrains IDEs (Copilot, Junie, JetBrains AI Assistant, etc.),
+* desktop and web clients like Claude Desktop, Codex App, or OpenWebUI.
 
 <img src="resources/serena-block-diagram.svg">
+
+:tv: See also: [Introduction to Serena in 5 Minutes (YouTube)](https://www.youtube.com/watch?v=5QN7gN1KYLA)
 
 To connect the Serena MCP server to your client, you either
   * provide the client with a launch command that allows it to start the MCP server, or
@@ -91,7 +99,7 @@ There are two alternative technologies powering these capabilities:
 
 * **Language servers** implementing the language server protocol (LSP) — the free/open-source alternative 
   which is used by default.
-* The **Serena JetBrains Plugin**, which leverages the powerful code analysis and editing
+* **The Serena JetBrains Plugin**, which leverages the powerful code analysis and editing
   capabilities of your JetBrains IDE (paid plugin; free trial available).
 
 You can choose either of these backends depending on your preferences and requirements.
@@ -102,7 +110,7 @@ Serena incorporates a powerful abstraction layer for the integration of language
 The underlying language servers are typically open-source projects or at least freely available for use.
 
 When using Serena's language server backend, we provide **support for over 40 programming languages**, including
-AL, Ansible, Bash, C#, C/C++, Clojure, Crystal, Dart, Elixir, Elm, Erlang, Fortran, F#, GLSL, Go, Groovy, Haskell, Haxe, HLSL, Java, JavaScript, Julia, Kotlin, Lean 4, Lua, Luau, Markdown, MATLAB, mSL, Nix, OCaml, Perl, PHP, PowerShell, Python, R, Ruby, Rust, Scala, Solidity, Swift, TOML, TypeScript, WGSL, YAML, and Zig.
+AL, Ansible, Bash, C#, C/C++, Clojure, Crystal, Dart, Elixir, Elm, Erlang, Fortran, F#, GLSL, Go, Groovy, Haskell, Haxe, HLSL, Java, JavaScript, JSON, Julia, Kotlin, Lean 4, Lua, Luau, Markdown, MATLAB, mSL, Nix, OCaml, Perl, PHP, PowerShell, Python, R, Ruby, Rust, Scala, Solidity, Swift, TOML, TypeScript, WGSL, YAML, and Zig.
 
 ### The Serena JetBrains Plugin
 
@@ -137,9 +145,10 @@ without reading entire files.
 | find referencing symbols         | yes              | yes              |
 | search in project dependencies   | --               | yes              |
 | type hierarchy                   | --               | yes              |
-| find declaration                 | --               | yes              |
-| find implementations             | --               | yes              |
+| find declaration                 | yes              | yes              |
+| find implementations             | yes              | yes              |
 | query external projects          | yes              | yes              |
+| diagnostics/inspections          | yes              | yes              |
 
 ### Refactoring
 
@@ -162,6 +171,12 @@ Serena's symbolic editing tools are less error-prone and much more token-efficie
 | insert after symbol    | yes               | yes              |
 | insert before symbol   | yes               | yes              |
 | safe delete            | yes               | yes              |
+
+### Interactive Debugging
+
+Exclusive to the JetBrains plugin, Serena supports a highly general debugging tool,
+which allows an agent to set breakpoints, inspect variables, evaluate expressions and control execution flow 
+via a persistent REPL-style interface.
 
 ### Basic Features
 
@@ -195,25 +210,6 @@ To achieve this, Serena offers multiple levels of (composable) configuration:
 * execution context-specific configuration (e.g. for particular clients)
 * dynamically composable configuration fragments (modes)
 
-</details>
-
-## Serena in Action
-
-<details>
-<summary>Demonstrations</summary>
-
-#### Demonstration 1: Efficient Operation in Claude Code
-
-A demonstration of Serena efficiently retrieving and editing code within Claude Code, thereby saving tokens and time. Efficient operations are not only useful for saving costs, but also for generally improving the generated code's quality. This effect may be less pronounced in very small projects, but often becomes of crucial importance in larger ones.
-
-https://github.com/user-attachments/assets/ab78ebe0-f77d-43cc-879a-cc399efefd87
-
-#### Demonstration 2: Serena in Claude Desktop
-
-A demonstration of Serena implementing a small feature for itself (a better log GUI) with Claude Desktop.
-Note how Serena's tools enable Claude to find and edit the right symbols.
-
-https://github.com/user-attachments/assets/6eaa9aa1-610d-4723-a2d6-bf1e487ba753
 </details>
 
 ## Quick Start

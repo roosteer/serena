@@ -159,6 +159,9 @@ class JetBrainsMoveTool(Tool, ToolMarkerSymbolicEdit, ToolMarkerOptional, ToolMa
         :param target_relative_path: the relative path of the target directory or file.
         :param target_parent_name_path: the name path of the target parent symbol.
         """
+        name_path = name_path or None
+        target_relative_path = target_relative_path or None
+        target_parent_name_path = target_parent_name_path or None
         relative_path = self._sanitize_input_param(relative_path)
         with JetBrainsPluginClient.from_project(self.project) as client:
             response_dict = client.move(
@@ -199,6 +202,7 @@ class JetBrainsSafeDeleteTool(Tool, ToolMarkerSymbolicEdit, ToolMarkerOptional, 
             remove symbols that become unused after the deletion. Default is False.
         """
         relative_path = self._sanitize_input_param(relative_path)
+        name_path = name_path or None
         with JetBrainsPluginClient.from_project(self.project) as client:
             response_dict = client.safe_delete(
                 name_path=name_path,
@@ -561,3 +565,106 @@ class JetBrainsRenameTool(Tool, ToolMarkerSymbolicEdit, ToolMarkerOptional):
             rename_in_text_occurrences=rename_in_text_occurrences,
         )
         return self._to_json(result)
+
+
+class JetBrainsDebugTool(Tool, ToolMarkerOptional, ToolMarkerBeta):
+    """
+    Provides debugging functionality (run configs, breakpoints, stepping, inspection, and evaluation)
+    via a persistent debug REPL connected to the JetBrains IDE.
+    """
+
+    def apply(
+        self,
+        expression: str,
+        repl_key: str = "default",
+    ) -> str:
+        """
+        Debug code interactively by evaluating Groovy expressions in a persistent REPL.
+        Important: Debugging should only be applied if the user has requested it!
+
+        Use the `serena_info` tool with topic `jet_brains_debug_repl` for usage information.
+
+        :param expression: a Groovy/Java expression/statement to evaluate in the REPL.
+            If empty/null, closes the REPL with the given key.
+        :param repl_key: identifier for the REPL instance. State persists across calls with the same key.
+        :return: string representation of the result
+        """
+        with JetBrainsPluginClient.from_project(self.project) as client:
+            if expression:
+                response = client.debug_eval(repl_key=repl_key, expression=expression)
+            else:
+                response = client.debug_close(repl_key=repl_key)
+            return response.get("result", str(response))
+
+
+class JetBrainsRunInspectionsTool(Tool, ToolMarkerSymbolicRead, ToolMarkerOptional):
+    """
+    Runs JetBrains IDE inspections on a file and returns the results.
+    """
+
+    def apply(
+        self,
+        relative_path: str,
+        min_severity: str | None = None,
+        inspection_names: list[str] | None = None,
+        start_line: int | None = None,
+        end_line: int | None = None,
+        max_answer_chars: int = -1,
+    ) -> str:
+        """
+        Runs IDE inspections (code analysis) on the given file and returns the problems found.
+        This leverages the full power of JetBrains' static analysis engine, including language-specific
+        inspections, type checking, potential bugs, code style issues, and more.
+
+        :param relative_path: the relative path to the file to inspect.
+        :param min_severity: minimum severity level to include in results (e.g. "ERROR", "WARNING", "WEAK_WARNING", "INFO").
+            If not specified, all severities are returned.
+        :param inspection_names: optional list of specific inspection names to run (e.g. ["UnusedImport", "TypeMismatch"]).
+            If not specified, all applicable inspections are run.
+        :param start_line: optional 1-based start line to restrict the inspection range.
+        :param end_line: optional 1-based end line to restrict the inspection range.
+        :param max_answer_chars: max characters for the JSON result. If exceeded, no content is returned.
+            -1 means the default value from the config will be used.
+        :return: JSON string with inspection results including severity, message, and location.
+        """
+        with JetBrainsPluginClient.from_project(self.project) as client:
+            response_dict = client.run_inspections(
+                relative_path=relative_path,
+                min_severity=min_severity,
+                inspection_names=inspection_names,
+                start_line=start_line,
+                end_line=end_line,
+            )
+        result = self._to_json(response_dict)
+        return self._limit_length(result, max_answer_chars)
+
+
+class JetBrainsListInspectionsTool(Tool, ToolMarkerSymbolicRead, ToolMarkerOptional):
+    """
+    Lists available JetBrains IDE inspections, optionally filtered by language or group.
+    """
+
+    def apply(
+        self,
+        language: str | None = None,
+        group_path_contains: str | None = None,
+        max_answer_chars: int = -1,
+    ) -> str:
+        """
+        Lists the available IDE inspections. Use this to discover which inspections can be passed
+        to the run_inspections tool's `inspection_names` parameter.
+
+        :param language: optional language to filter by (e.g. "Java", "Python", "Kotlin").
+        :param group_path_contains: optional substring to match against the inspection group path
+            (e.g. "probable bugs", "code style").
+        :param max_answer_chars: max characters for the JSON result. If exceeded, no content is returned.
+            -1 means the default value from the config will be used.
+        :return: JSON string with the list of available inspections including name, group path, and language.
+        """
+        with JetBrainsPluginClient.from_project(self.project) as client:
+            response_dict = client.list_inspections(
+                language=language,
+                group_path_contains=group_path_contains,
+            )
+        result = self._to_json(response_dict)
+        return self._limit_length(result, max_answer_chars)

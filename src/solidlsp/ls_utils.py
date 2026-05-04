@@ -115,6 +115,23 @@ class TextUtils:
         new_l, new_c = TextUtils._get_updated_position_from_line_and_column_and_edit(line, col, text_to_be_inserted)
         return new_text, new_l, new_c
 
+    @staticmethod
+    def get_text_in_range(text: str, start_line: int, start_col: int, end_line: int, end_col: int) -> str:
+        """
+        Returns the text between the given start and end positions.
+        """
+        start_idx = TextUtils.get_index_from_line_col(text, start_line, start_col)
+        end_idx = TextUtils.get_index_from_line_col(text, end_line, end_col)
+        return text[start_idx:end_idx]
+
+    @staticmethod
+    def get_text_in_lines_range(text: str, start_line: int, end_line: int) -> str:
+        """
+        Returns the text encompassed by the given start and end lines (inclusive).
+        """
+        lines = text.splitlines(keepends=True)
+        return "".join(lines[start_line : end_line + 1])
+
 
 class PathUtils:
     """

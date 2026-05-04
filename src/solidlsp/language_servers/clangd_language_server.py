@@ -1,8 +1,10 @@
+import hashlib
 import json
 import logging
 import os
 import pathlib
 import threading
+from collections.abc import Hashable
 from typing import Any, cast
 
 from overrides import override
@@ -32,6 +34,39 @@ class ClangdLanguageServer(SolidLanguageServer):
           (default: the bundled Serena version).
     """
 
+    @staticmethod
+    def _determine_log_level(line: str) -> int:
+        """
+        Classify a clangd stderr line using clangd's explicit level prefix.
+
+        See `clang::clangd::Logger::indicator` for details:
+        https://clang.llvm.org/extra/doxygen/classclang_1_1clangd_1_1Logger.html
+
+        Clangd emits each log record prefixed by a single indicator character
+        followed by a timestamp in square brackets, e.g. ``I[12:27:16.234]``.
+
+        The indicators are ``D`` (Debug), ``I`` (Info), ``E`` (Error) and
+        ``F`` (Fatal). Continuation lines of multi-line records carry no
+        prefix and are treated as informational.
+
+        Without this override, the base implementation scans the line for
+        the substrings ``error`` and ``exception``, which produces false
+        positives on clangd's reconstructed compile commands in some cases
+        (e.g. ``-DNO_EXCEPTIONS``, ``-fno-exceptions``).
+        """
+        # classify by clangd's level indicator character
+        if len(line) >= 2 and line[1] == "[":
+            indicator = line[0]
+            if indicator in ("E", "F"):
+                return logging.ERROR
+            if indicator == "I":
+                return logging.INFO
+            if indicator == "D":
+                return logging.DEBUG
+
+        # continuation line or non-prefixed output: default to INFO, do not keyword-scan
+        return logging.INFO
+
     def __init__(self, config: LanguageServerConfig, repository_root_path: str, solidlsp_settings: SolidLSPSettings):
         """
         Creates a ClangdLanguageServer instance. This class is not meant to be instantiated directly. Use LanguageServer.create() instead.
@@ -41,6 +76,30 @@ class ClangdLanguageServer(SolidLanguageServer):
         self.service_ready_event = threading.Event()
         self.initialize_searcher_command_available = threading.Event()
         self.resolve_main_method_available = threading.Event()
+
+    @override
+    def _document_symbols_cache_fingerprint(self) -> Hashable:
+        cache_format_version = 1
+        cpp_settings: dict[str, Any] = self._custom_settings or {}
+        return (
+            cache_format_version,
+            cpp_settings.get("clangd_version"),
+            cpp_settings.get("ls_path"),
+            cpp_settings.get("compile_commands_dir"),
+            self._compile_commands_fingerprint(),
+        )
+
+    def _compile_commands_fingerprint(self) -> str | None:
+        compile_db_path = os.path.join(self.repository_root_path, "compile_commands.json")
+        if not os.path.exists(compile_db_path):
+            return None
+
+        try:
+            with open(compile_db_path, "rb") as f:
+                return hashlib.md5(f.read()).hexdigest()
+        except OSError as e:
+            log.warning(f"Failed to fingerprint compile_commands.json: {e}")
+            return None
 
     @override
     def is_ignored_dirname(self, dirname: str) -> bool:
@@ -321,12 +380,19 @@ class ClangdLanguageServer(SolidLanguageServer):
 
         log.info("Sending initialize request from LSP client to LSP server and awaiting response")
         init_response = self.server.send.initialize(initialize_params)
-        assert init_response["capabilities"]["textDocumentSync"]["change"] == 2  # type: ignore
-        assert "completionProvider" in init_response["capabilities"]
-        assert init_response["capabilities"]["completionProvider"] == {
-            "triggerCharacters": [".", "<", ">", ":", '"', "/", "*"],
-            "resolveProvider": False,
-        }
+        capabilities = init_response["capabilities"]
+
+        text_document_sync = capabilities["textDocumentSync"]
+        if isinstance(text_document_sync, int):
+            assert text_document_sync == 2  # type: ignore
+        else:
+            assert text_document_sync["change"] == 2  # type: ignore
+
+        assert "completionProvider" in capabilities
+        completion_provider = capabilities["completionProvider"]
+        trigger_characters = set(completion_provider["triggerCharacters"])
+        assert {".", "<", ">", ":", '"', "/"}.issubset(trigger_characters)
+        assert completion_provider["resolveProvider"] is False
 
         self.server.notify.initialized({})
         # set ready flag, clangd sends no meaningful notification when ready

@@ -18,6 +18,7 @@ from sensai.util.string import ToStringMixin
 
 import serena.jetbrains.jetbrains_types as jb
 from serena.config.serena_config import RegisteredProject
+from serena.constants import SerenaPorts
 from serena.jetbrains.jetbrains_types import PluginStatusDTO
 from serena.project import Project
 from serena.util.class_decorators import singleton
@@ -174,7 +175,7 @@ class JetBrainsPluginClient(ToStringMixin):
     Provides simple methods to interact with all available endpoints.
     """
 
-    BASE_PORT = 0x5EA2
+    BASE_PORT = SerenaPorts.JETBRAINS_PLUGIN_SERVER_BASE_PORT
     PLUGIN_REQUEST_TIMEOUT = 300
     """
     the timeout used for request handling within the plugin (a constant in the plugin)
@@ -631,6 +632,82 @@ class JetBrainsPluginClient(ToStringMixin):
         symbol_collection = cast(jb.SymbolCollectionResponse, self._make_request("POST", "/findImplementations", request_data))
         self._postprocess_symbol_collection_response(symbol_collection)
         return symbol_collection
+
+    def debug_eval(self, repl_key: str, expression: str) -> dict[str, Any]:
+        """
+        Evaluates a Groovy expression in the persistent debug REPL.
+
+        :param repl_key: the session key identifying the REPL instance
+        :param expression: the Groovy expression to evaluate
+        :return: the response containing REPL key and result
+        """
+        self._require_version_at_least(2023, 2, 16)
+        request_data = {
+            "replKey": repl_key,
+            "expression": expression,
+        }
+        return self._make_request("POST", "/debugReplEval", request_data)
+
+    def debug_close(self, repl_key: str) -> dict[str, Any]:
+        """
+        Closes the debug REPL for the given session key, clearing all state.
+
+        :param repl_key: the key identifying the REPL instance to close
+        :return: the status response
+        """
+        self._require_version_at_least(2023, 2, 16)
+        request_data = {
+            "replKey": repl_key,
+        }
+        return self._make_request("POST", "/debugReplClose", request_data)
+
+    def run_inspections(
+        self,
+        relative_path: str,
+        min_severity: str | None = None,
+        inspection_names: list[str] | None = None,
+        start_line: int | None = None,
+        end_line: int | None = None,
+    ) -> jb.RunInspectionsResponse:
+        """
+        Runs IDE inspections on the given file and returns the results.
+
+        :param relative_path: the relative path to the file to inspect
+        :param min_severity: minimum severity level to include (e.g. "WARNING", "ERROR")
+        :param inspection_names: optional list of specific inspection names to run
+        :param start_line: optional start line to restrict the inspection range
+        :param end_line: optional end line to restrict the inspection range
+        """
+        request_data: dict[str, Any] = {
+            "relativePath": relative_path,
+        }
+        if min_severity is not None:
+            request_data["minSeverity"] = min_severity
+        if inspection_names is not None:
+            request_data["inspectionNames"] = inspection_names
+        if start_line is not None:
+            request_data["startLine"] = start_line
+        if end_line is not None:
+            request_data["endLine"] = end_line
+        return cast(jb.RunInspectionsResponse, self._make_request("POST", "/runInspectionsOnFile", request_data))
+
+    def list_inspections(
+        self,
+        language: str | None = None,
+        group_path_contains: str | None = None,
+    ) -> jb.ListInspectionsResponse:
+        """
+        Lists available IDE inspections, optionally filtered by language and/or group path.
+
+        :param language: optional language to filter inspections by (e.g. "Java", "Python")
+        :param group_path_contains: optional substring to filter inspection group paths
+        """
+        request_data: dict[str, Any] = {}
+        if language is not None:
+            request_data["language"] = language
+        if group_path_contains is not None:
+            request_data["groupPathContains"] = group_path_contains
+        return cast(jb.ListInspectionsResponse, self._make_request("POST", "/listInspections", request_data))
 
     def close(self) -> None:
         self._session.close()
