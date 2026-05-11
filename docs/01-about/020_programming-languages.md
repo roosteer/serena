@@ -28,6 +28,13 @@ or at least freely available for use.
 We currently provide direct, out-of-the-box support for the programming languages listed below.
 Some languages require additional installations or setup steps, as noted.
 
+* **Ada / SPARK**  
+  (uses AdaCore's [Ada Language Server (ALS)](https://github.com/AdaCore/ada_language_server),
+  automatically downloaded; supports `.ads`, `.adb`, and `.ada` files;
+  works best with a `.gpr` GNAT project file at the repository root;
+  SPARK is handled by the same server transparently — set language `ada` for both.
+  To use a pre-installed ALS (e.g. from Alire, GNAT Studio, or the VS Code Ada extension),
+  set `ls_specific_settings.ada.ls_path`.)
 * **AL**
 * **Angular**  
   (experimental; requires Node.js + npm, plus `npm install` having been run in the project root so that `@angular/core`
@@ -40,6 +47,8 @@ Some languages require additional installations or setup steps, as noted.
   semantic tokens, and validation; document symbols, workspace symbols, references, and rename
   are not supported by this version)
 * **Bash**
+* **BSL** (1C:Enterprise / OneScript)  
+  (requires Java 21+ on PATH; uses [bsl-language-server](https://github.com/1c-syntax/bsl-language-server) by 1c-syntax; the JAR is auto-downloaded and SHA-256-verified for the bundled default version; supports `.bsl` and `.os` files; configure optional `ls_path` or `bsl_ls_version` under `ls_specific_settings.bsl`)
 * **C#**  
   (by default, uses the Roslyn language server (language `csharp`), requiring [.NET v10+](https://dotnet.microsoft.com/en-us/download/dotnet) and, on Windows, `pwsh` ([PowerShell 7+](https://learn.microsoft.com/en-us/powershell/scripting/install/install-powershell-on-windows?view=powershell-7.5));
   set language to `csharp_omnisharp` to use OmiSharp instead)

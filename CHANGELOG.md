@@ -2,11 +2,15 @@
 
 Status of the `main` branch. Changes prior to the next official version change will appear here.
 
+# v1.3.0 (2026-05-11)
+
 * General:
   - Breaking change in mode definitions: Projects (project.yml) can no longer override `base_modes`.
     Instead, they can define `added_modes` to add modes on top of base and default modes.  
     See updated [documentation on modes](https://oraios.github.io/serena/02-usage/050_configuration.html#modes).
-  - Serena's default configuration now uses `interactive` and `editing` as `base_modes` instead of as `default_modes`. 
+  - Serena's default configuration now uses `interactive` and `editing` as `base_modes` instead of as `default_modes`.
+  - Fixed path validation in `search_for_pattern` tool (thanks to [@dodge1218](https://github.com/dodge1218) for the report)
+  - Fix: In HTTP/SSE mode, a client disconnection triggered a partial agent shutdown (project deactivation, dashboard manager & GUI viewer shutdown)
   
 * JetBrains:
   - Add new tools:
@@ -25,9 +29,11 @@ Status of the `main` branch. Changes prior to the next official version change w
   - Elixir (`elixir-tools/next-ls`): Fix deadlock in monorepo projects where `mix.exs` lives in a subdirectory. The server now searches immediate subdirectories when no `mix.exs` is found at the repository root. #1444
   - Java (`eclipse.jdt.ls`): Add upstream JDTLS mode for offline / restricted-network use. Setting both `jdtls_path` and `lombok_path` in `ls_specific_settings.java` makes Serena use an existing upstream JDTLS installation (e.g. `brew install jdtls`) and the system JDK 21+, skipping the ~500 MB vscode-java VSIX, Gradle, and IntelliCode downloads. New related setting `java_home` lets the user override the JDK used to launch JDTLS. Default behavior unchanged — the JDTLS workspace hash is preserved bit-for-bit for users on the default route, so existing project caches are reused without a one-time reindex; the launcher path is mixed into the hash only when `jdtls_path` is set, isolating upstream installations from the default workspace. #1415
   - Java (eclipse.jdt.ls): Lombok-generated methods (getters/setters, builder(), equals/hashCode/toString, etc.) are now included in symbol-based tools (find_symbol, get_symbols_overview, edits). Added lombok_show_generated setting (default: on) to toggle this. Updated bundled vscode-java to 1.54.0-923. Issue #1432.
+  - Add **Ada / SPARK** support using AdaCore's [Ada Language Server](https://github.com/AdaCore/ada_language_server). Auto-downloads the official prebuilt ALS binary (linux-x64/arm64, darwin-x64/arm64, win32-x64). A single `ada` language covers both Ada and SPARK, since the server uses the same `.ads`/`.adb` files for both and distinguishes SPARK by source-level pragmas/aspects. Users can override the binary by setting `ls_specific_settings.ada.ls_path` to a pre-installed `ada_language_server` (e.g. from Alire, GNAT Studio, or the VS Code Ada extension).
   - Add **Angular** (experimental) via a dual-server architecture: `@angular/language-server` (ngserver) handles standalone `.html` template files, while a companion `typescript-language-server` with `@angular/language-service` loaded as a tsserver plugin handles all `.ts` operations including inline templates. Provides type-aware navigation between templates and component classes. Requires Node.js, npm, and `@angular/core` installed in the project (`npm install` in the project root). Subsumes `typescript`+`html` for `.ts`/`.html` files when active; SCSS is not subsumed.
   - Add **HTML** (experimental) using `vscode-html-language-server` from the `vscode-langservers-extracted` npm package. Provides in-file element/id symbols via documentSymbol; cross-file references are not meaningful for HTML. Also used as a companion server by the Angular LS for plain HTML documentSymbol support.
   - Add **SCSS / Sass / CSS** (experimental) using [some-sass-language-server](https://github.com/wkillerud/some-sass). Handles `.scss`, `.sass`, and `.css` through one server, with full `@use`/`@forward` workspace-wide go-to-definition and find-references for variables, mixins, and functions across Sass files. The `.css` path uses the same `vscode-css-languageservice` engine that powers the standalone CSS LS; CSS feature toggles default off upstream and are flipped on at startup so symbols, hover, completion, and syntax-level diagnostics work for plain CSS as well.
+  - Add **1C / OneScript** support using [BSL Language Server](https://github.com/1c-syntax/bsl-language-server/).
   - Add support for more filenames to be considered by ccls and clangd.
   - Clojure (`clojure-lsp`): Fix incomplete `find_referencing_symbols` results in multi-module monorepos. clojure-lsp only discovers source paths from the descriptor at the workspace root and does not recurse for sub-module `deps.edn` / `project.clj` / `shadow-cljs.edn` / `bb.edn` files, so references in sibling modules were silently missed until those files happened to be opened by `find_symbol` / `get_symbols_overview`. Serena now scans the repo for project descriptors at startup and passes the union of their declared source paths to clojure-lsp via `initializationOptions`. Project-local `.lsp/config.edn` files are honoured as-is (no override). New `ls_specific_settings.clojure` keys: `source_paths` (explicit override) and `config_edn_path` (parse `:source-paths` from a user-supplied config file).
 
@@ -36,6 +42,7 @@ Status of the `main` branch. Changes prior to the next official version change w
     `permission_mode == "auto"`, in addition to the existing `acceptEdits` behavior. #1386
   - Extension: heuristics for parsing commands and firing a hook on too many greps or reads. Important for clients that, unlike claude code, don't have dedicated grep/read tools.
   - Read hook now only fires on reads of code files (using heuristics to parse the read command string)
+  - Reminder hook now also counts and fires on usages of serena's non-symbolic tools.
 
 # v1.2.0 (2026-04-27)
 

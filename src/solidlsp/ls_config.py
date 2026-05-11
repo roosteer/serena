@@ -110,6 +110,19 @@ class Language(str, Enum):
     Uses a custom LSP server based on pygls. Automatically sets up
     a virtual environment with pygls dependencies on first use.
     """
+    BSL = "bsl"
+    """BSL Language Server for 1C:Enterprise and OneScript languages.
+    Uses bsl-language-server by 1c-syntax. Automatically downloads the JAR.
+    Supports .bsl and .os files. Requires Java 21+ on PATH.
+    """
+    ADA = "ada"
+    """Ada / SPARK language server using AdaCore's Ada Language Server (ALS).
+    Supports .ads (specs), .adb (bodies), and .ada files. Auto-downloads the
+    ALS binary from AdaCore's GitHub releases. Works best with a .gpr GNAT
+    project file at the repository root. SPARK files are handled transparently
+    by the same server, since SPARK is distinguished by pragmas/aspects in
+    source rather than by file extension.
+    """
     # Experimental or deprecated Language Servers
     TYPESCRIPT_VTS = "typescript_vts"
     """Use the typescript language server through the natively bundled vscode extension via https://github.com/yioneko/vtsls"""
@@ -455,6 +468,10 @@ class Language(str, Enum):
                 return FilenameMatcher(".yaml", ".yml")
             case self.MSL:
                 return FilenameMatcher(".mrc")
+            case self.BSL:
+                return FilenameMatcher(".bsl", ".os")
+            case self.ADA:
+                return FilenameMatcher(".ads", ".adb", ".ada", case_sensitive=False)
             case self.HTML:
                 return FilenameMatcher(".html", ".htm")
             case self.SCSS:
@@ -505,7 +522,7 @@ class Language(str, Enum):
 
                 return CSharpLanguageServer
             case self.CSHARP_OMNISHARP:
-                from solidlsp.language_servers.omnisharp import OmniSharp
+                from solidlsp.language_servers.omnisharp import OmniSharp  # type: ignore[attr-defined]
 
                 return OmniSharp
             case self.TYPESCRIPT:
@@ -702,6 +719,14 @@ class Language(str, Enum):
                 from solidlsp.language_servers.msl_language_server import MslLanguageServer
 
                 return MslLanguageServer
+            case self.BSL:
+                from solidlsp.language_servers.bsl_language_server import BSLLanguageServer
+
+                return BSLLanguageServer
+            case self.ADA:
+                from solidlsp.language_servers.ada_language_server import AdaLanguageServer
+
+                return AdaLanguageServer
             case self.HTML:
                 from solidlsp.language_servers.vscode_html_language_server import VsCodeHtmlLanguageServer
 

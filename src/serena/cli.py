@@ -363,7 +363,7 @@ class TopLevelCommands(AutoRegisteringGroup):
         if default_modes or added_modes:
             mode_selection_def = ModeSelectionDefinitionWithAddedModes(default_modes=default_modes or None, added_modes=added_modes or None)
 
-        factory = SerenaMCPFactory(context=context, project=project_file, memory_log_handler=memory_log_handler)
+        factory = SerenaMCPFactory(transport=transport, context=context, project=project_file, memory_log_handler=memory_log_handler)
         server = factory.create_mcp_server(
             host=host,
             port=port,
