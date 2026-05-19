@@ -61,6 +61,9 @@ class SerenaPaths:
             home_dir = str(Path.home() / SERENA_MANAGED_DIR_NAME)
         else:
             home_dir = home_dir.strip()
+        self.serena_pkg_path = Path(__file__).parent.parent.resolve()
+        self.serena_resources_path = self.serena_pkg_path / "resources"
+
         self.serena_user_home_dir: str = home_dir
         """
         the path to the Serena home directory, where the user's configuration/data is stored.
@@ -871,7 +874,7 @@ class SerenaConfig(SharedConfig, ModeSelectionDefinitionWithBaseModes):
         if "projects" not in loaded_commented_yaml:
             raise SerenaConfigError("`projects` key not found in Serena configuration. Please update your `serena_config.yml` file.")
         instance.projects = []
-        for path in loaded_commented_yaml["projects"]:
+        for path in loaded_commented_yaml["projects"] or []:
             path = Path(path).resolve()
             try:
                 path_exists = path.exists()
